@@ -1,0 +1,147 @@
+---
+title: "PML_Course Project"
+author: "Mengyao Shi"
+date: "2021/3/7"
+output: html_document
+---
+
+
+<font face="Arial" size=6>**Background**</font>
+  
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+
+<font face="Arial" size=6>**Research Question**</font>
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 5 different manners include: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). After building the prediction model, it is used to predict 20 different test cases. 
+
+<font face="Arial" size=6>**Exploratory Data Analysis**</font>
+
+* <font face="Times New Roman" size=5>*Data Source*</font>
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+* <font face="Times New Roman" size=5>*Import the data & Open packages*</font>
+```{r warning=FALSE, message=FALSE}
+# import the data
+training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+test <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+
+# open packages needed for project
+library(knitr)
+library(caret)
+library(rpart)
+library(rattle)
+library(randomForest)
+library(ggplot2)
+library(rpart.plot)
+```
+
+* <font face="Times New Roman" size=5>*Clean the data*</font>
+
+I split the training data into a training data set (60% of the data) and a testing data set (40% of the data)
+
+```{r warning=FALSE, message=FALSE}
+set.seed(729)
+
+inTrain <- createDataPartition(training$classe, p=0.6, list=FALSE)
+training <- training[inTrain,]
+testing <- training[-inTrain,]
+
+dim(training)
+dim(testing)
+```
+
+We can find that there are both 160 variables in the training and testing set. By looking at the training dataset table, we can find many NA variables, blank values, and first seven useless variables for prediction (like user name, time, and window). We could also remove near zero variance predictors.
+
+```{r warning=FALSE, message=FALSE}
+training <- training[,colSums(is.na(training)) == 0]
+testing <- testing[,colSums(is.na(testing)) == 0]
+dim(training)
+dim(testing)
+
+training <- training[, -(1:7)]
+testing <- testing[, -(1:7)]
+dim(training)
+dim(testing)
+
+
+nzv <- nearZeroVar(training)
+training <- training[,-nzv]
+testing <- testing[,-nzv]
+dim(training)
+dim(testing)
+```
+
+After cleaning, there are only 53 variables in the dataset. There are 11776 observations in the training set and 4716 observations in the testing set.
+
+<font face="Arial" size=6>**Building the Prediction Model**</font>
+
+* <font face="Times New Roman" size=5>*Decision Tree*</font>
+
+```{r warning=FALSE, message=FALSE}
+set.seed(729)
+# Builiding the model
+modFit_dt <- rpart(classe ~ .,method="class", data=training)
+rattle::fancyRpartPlot(modFit_dt)
+
+# Predicting with the model
+predict_dt <- predict(modFit_dt, testing, type = "class")
+confusionMatrix(predict_dt, testing$classe)$overall["Accuracy"]
+```
+
+The accuracy of decision tree is 0.746.
+
+* <font face="Times New Roman" size=5>*Random Forest*</font>
+
+```{r warning=FALSE, message=FALSE}
+set.seed(729)
+# Builiding the model
+modFit_rf <- train(classe ~.,method="rf",data=training,
+                   trControl = trainControl(method="cv"),number=3)
+# Predicting with the model
+predict_rf <- predict(modFit_rf, testing)
+confusionMatrix(predict_rf, testing$classe)$overall["Accuracy"]
+```
+
+The accuracy of random forest is 1.
+
+* <font face="Times New Roman" size=5>*Boosting Model*</font>
+
+```{r warning=FALSE, message=FALSE}
+set.seed(729)
+# Builiding the model
+modFit_gbm <- train(classe ~ .,method="gbm", data=training, verbose = FALSE)
+print(modFit_gbm)
+# Predicting with the model
+predict_gbm <- predict(modFit_gbm, testing)
+confusionMatrix(predict_gbm, testing$classe)$overall["Accuracy"]
+```
+
+The accuracy of gbm is 0.975.
+
+From above, the accurary is highest in the random forest model. Therefore, we would apply the random forest model to the original test dataset. 
+
+<font face="Arial" size=6>**Prediction**</font>
+
+```{r warning=FALSE, message=FALSE}
+predictfinal <- predict(modFit_rf, newdata = test)
+predictfinal
+```
+
+
+
+
+
+
+
+
+
+
